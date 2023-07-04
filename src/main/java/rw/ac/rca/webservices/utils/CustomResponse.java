@@ -19,6 +19,7 @@ private String message;
     }
 
     public CustomResponse(T data) {
+        this.message = "Operation successful";
         this.data = data;
     }
 

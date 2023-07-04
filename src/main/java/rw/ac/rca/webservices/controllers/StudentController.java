@@ -4,6 +4,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import rw.ac.rca.webservices.models.Student;
 import rw.ac.rca.webservices.repository.StudentRepository;
+import rw.ac.rca.webservices.utils.CustomResponse;
 
 import java.util.List;
 import java.util.Optional;
@@ -24,44 +25,64 @@ public class StudentController {
     }
 
     @GetMapping("/all")
-    public ResponseEntity<List<Student>> getAllStudents() {
+    public ResponseEntity<CustomResponse<List<Student>>> getAllStudents() {
         List<Student> students = studentRepo.findAll();
-        return ResponseEntity.ok(students);
+        return ResponseEntity.ok(new CustomResponse<>("All Students", students));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Student> getStudentById(@PathVariable("id") String id) {
+    public ResponseEntity<CustomResponse<Student>> getStudentById(@PathVariable("id") String id) {
         Optional<Student> student = studentRepo.findById(id);
-        return student.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
+        return student.map(value -> ResponseEntity.ok(new CustomResponse<>("Operation successful", value))).orElseGet(() -> ResponseEntity.ok(new CustomResponse<>("Student not found")));
     }
 
-    @GetMapping("/getbyage/{age}")
-    public ResponseEntity<List<Student>> getStudentByAge(@PathVariable("age") int age) {
+    @PostMapping("/add")
+    public ResponseEntity<CustomResponse<Student>> addStudent(@RequestBody Student student) {
+        Student newStudent = studentRepo.save(student);
+        return ResponseEntity.ok(new CustomResponse<>("Operation successful", newStudent));
+    }
+
+    @PutMapping("/update/{id}")
+    public ResponseEntity<CustomResponse<Student>> updateStudent(@PathVariable("id") String id, @RequestBody Student student) {
+        Optional<Student> studentOptional = studentRepo.findById(id);
+        if (studentOptional.isPresent()) {
+            Student newStudent = studentOptional.get();
+            newStudent.setFirstName(student.getFirstName());
+            newStudent.setLastName(student.getLastName());
+            newStudent.setAge(student.getAge());
+            newStudent.setGender(student.getGender());
+            return ResponseEntity.ok(new CustomResponse<>("Operation successful", studentRepo.save(newStudent)));
+        } else {
+            return ResponseEntity.ok(new CustomResponse<>("Student not found"));
+        }
+    }
+
+    @DeleteMapping("/delete/{id}")
+    public ResponseEntity<CustomResponse<String>> deleteStudent(@PathVariable("id") String id) {
+        Optional<Student> studentOptional = studentRepo.findById(id);
+        if (studentOptional.isPresent()) {
+            studentRepo.delete(studentOptional.get());
+            return ResponseEntity.ok(new CustomResponse<>("Operation successful"));
+        } else {
+            return ResponseEntity.ok(new CustomResponse<>("Student not found"));
+        }
+    }
+
+    @GetMapping("/age/{age}")
+    public ResponseEntity<CustomResponse<List<Student>>> getStudentByAge(@PathVariable("age") int age) {
         List<Student> students = studentRepo.findByAge(age);
-        return ResponseEntity.ok(students);
+        return ResponseEntity.ok(new CustomResponse<>("Operation successful", students));
     }
 
-    @PostMapping("/create")
-    public ResponseEntity<Student> createStudent(@RequestBody() Student st) {
-        Student newStudent = studentRepo.save(st);
-        return ResponseEntity.ok(newStudent);
+    @GetMapping("/sorted/firstName/{lastName}")
+    public ResponseEntity<CustomResponse<List<Student>>> getSortedByLastName(@PathVariable("lastName") String lastName){
+        List<Student> students = studentRepo.findSortedLname(lastName);
+        return ResponseEntity.ok(new CustomResponse<>(students));
+    }
+    @GetMapping("/sorted/age")
+    public ResponseEntity<CustomResponse<List<Student>>> getSortedByAge(){
+        List<Student> students = studentRepo.findByAgeSorted();
+        return ResponseEntity.ok(new CustomResponse<>("Students ordered by age", students));
     }
 
-    @PutMapping("/{id}")
-    public ResponseEntity<Student> updateStudent(@RequestBody() Student st, @RequestParam("id") String id) {
-        Student availableStudent = studentRepo.findById(id).get();
-        availableStudent.setAge(st.getAge());
-        availableStudent.setFirstName(st.getFirstName());
-        availableStudent.setLastName(st.getLastName());
-        // availableStudent.setGender(st.getGender());
-        Student updatedStudent = studentRepo.save(availableStudent);
-        return ResponseEntity.ok(updatedStudent);
-
-    }
-
-    @DeleteMapping("/{id}")
-    public ResponseEntity<?> deleteStudent(@PathVariable("id") String id) {
-        studentRepo.deleteById(id);
-        return ResponseEntity.ok("Student deleted successfully");
-    }
 }
